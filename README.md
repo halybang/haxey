@@ -5,6 +5,8 @@ Stand-alone application for hexya - https://github.com/hexya-erp/hexya
 * Install hexya
 ```bash
 go get -u https://github.com/hexya-erp/hexya
+go get -u github.com/hexya-erp/hexya-base
+#go get -u bitbucket.org/yourname/hexya-addons
 ```
 * Clone haxey and edit config
 ```bash

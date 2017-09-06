@@ -1,0 +1,8 @@
+DB:
+    host: 127.0.0.1
+    driver: postgres
+    user: hexya
+    password: hexya
+    name: hexya
+Debug: true
+LogStdout: true

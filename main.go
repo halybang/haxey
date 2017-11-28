@@ -17,6 +17,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 	"runtime"
 
 	hexyacmd "github.com/hexya-erp/hexya/cmd"
@@ -40,6 +42,9 @@ func init() {
 	RootCmd.PersistentFlags().BoolP("log-stdout", "o", false, "Enable stdout logging. Use for development or debugging.")
 	RootCmd.PersistentFlags().Bool("debug", false, "Enable server debug mode for development")
 
+	RootCmd.PersistentFlags().String("data-dir", "", "Path to the directory where Hexya should store its data")
+	RootCmd.PersistentFlags().String("root-dir", "", "Path to the directory where Hexya root dir")
+
 	RootCmd.PersistentFlags().String("db-driver", "postgres", "Database driver to use")
 	RootCmd.PersistentFlags().String("db-host", "/var/run/postgresql",
 		"The database host to connect to. Values that start with / are for unix domain sockets directory")
@@ -53,6 +58,10 @@ func init() {
 	viper.BindPFlag("LogFile", RootCmd.PersistentFlags().Lookup("log-file"))
 	viper.BindPFlag("LogStdout", RootCmd.PersistentFlags().Lookup("log-stdout"))
 	viper.BindPFlag("Debug", RootCmd.PersistentFlags().Lookup("debug"))
+
+	viper.BindPFlag("DataDir", RootCmd.PersistentFlags().Lookup("data-dir"))
+	viper.BindPFlag("RootDir", RootCmd.PersistentFlags().Lookup("root-dir"))
+
 	viper.BindPFlag("DB.Driver", RootCmd.PersistentFlags().Lookup("db-driver"))
 	viper.BindPFlag("DB.Host", RootCmd.PersistentFlags().Lookup("db-host"))
 	viper.BindPFlag("DB.Port", RootCmd.PersistentFlags().Lookup("db-port"))
@@ -117,17 +126,32 @@ func main() {
 
 func initConfig() {
 	cfgFile := viper.GetString("ConfigFileName")
+	var defaultHexyaDir string
+	if runtime.GOOS != "windows" {
+		viper.AddConfigPath("/etc/hexya")
+		defaultHexyaDir = "/usr/share/hexya"
+	} else {
+		defaultHexyaDir = "./hexya"
+	}
 
-	viper.AddConfigPath("/etc/hexya/")
-	viper.AddConfigPath("$HOME/.hexya")
+	osUser, err := user.Current()
+	if err != nil {
+		log.Warn("Unable to retrieve current user", "error", err)
+	} else {
+		defaultHexyaDir = filepath.Join(osUser.HomeDir, ".hexya")
+	}
+	viper.SetDefault("DataDir", defaultHexyaDir)
+	viper.AddConfigPath(defaultHexyaDir)
 	viper.AddConfigPath(".")
+
+	viper.SetConfigName("hexya")
 
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
-	} else {
-		viper.SetConfigName("hexya")
 	}
 
-	if err := viper.ReadInConfig(); err != nil {
+	err = viper.ReadInConfig()
+	if err != nil {
+		log.Warn("Error while loading configuration file", "error", err)
 	}
 }

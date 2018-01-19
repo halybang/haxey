@@ -185,14 +185,14 @@ func initConfig() {
 	cfgFile := viper.GetString("ConfigFileName")
 
 	if runtime.GOOS != "windows" {
-		viper.AddConfigPath("/etc/gut")
+		viper.AddConfigPath("/etc/hexya")
 	}
 
 	osUser, err := user.Current()
 	if err != nil {
 		log.Panic("Unable to retrieve current user", "error", err)
 	}
-	defaultHexyaDir := filepath.Join(osUser.HomeDir, ".gut")
+	defaultHexyaDir := filepath.Join(osUser.HomeDir, ".hexya")
 	viper.SetDefault("DataDir", defaultHexyaDir)
 
 	rootDir, err := filepath.Abs(filepath.Dir(os.Args[0]))

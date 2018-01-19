@@ -1,8 +1,20 @@
+Debug: true
+LogStdout: true
+LogLevel: debug
+LogFile: /tmp/hexya.log
+DataDir: /home/haxey/hexya_data
+RootDir: /home/haxey/hexya_root
 DB:
     host: 127.0.0.1
     driver: postgres
     user: hexya
     password: hexya
-    name: hexya
-Debug: true
-LogStdout: true
+    name: haxey
+Server:
+    interface: "0.0.0.0"
+    port:	8080
+    languages:
+      - vi
+Modules:
+  - github.com/hexya-erp/hexya-base/base
+  - github.com/hexya-erp/hexya-base/web

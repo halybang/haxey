@@ -22,6 +22,8 @@ import (
 	"runtime"
 
 	hexyacmd "github.com/hexya-erp/hexya/cmd"
+	"github.com/hexya-erp/hexya/hexya/server"
+	"github.com/hexya-erp/hexya/hexya/tools/generate"
 	"github.com/hexya-erp/hexya/hexya/tools/logging"
 
 	"github.com/spf13/cobra"
@@ -37,6 +39,8 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	RootCmd.PersistentFlags().StringP("config", "c", "", "Alternate configuration file to read. Defaults to $HOME/.hexya/")
+	RootCmd.PersistentFlags().StringSliceP("modules", "m", []string{"github.com/hexya-erp/hexya-base/web"}, "List of module paths to load. Defaults to ['github.com/hexya-erp/hexya-base/web']")
+
 	RootCmd.PersistentFlags().StringP("log-level", "L", "info", "Log level. Should be one of 'debug', 'info', 'warn', 'error' or 'crit'")
 	RootCmd.PersistentFlags().String("log-file", "", "File to which the log will be written")
 	RootCmd.PersistentFlags().BoolP("log-stdout", "o", false, "Enable stdout logging. Use for development or debugging.")
@@ -54,6 +58,8 @@ func init() {
 	RootCmd.PersistentFlags().String("db-name", "hexya", "Database name")
 
 	viper.BindPFlag("ConfigFileName", RootCmd.PersistentFlags().Lookup("config"))
+	viper.BindPFlag("Modules", RootCmd.PersistentFlags().Lookup("modules"))
+
 	viper.BindPFlag("LogLevel", RootCmd.PersistentFlags().Lookup("log-level"))
 	viper.BindPFlag("LogFile", RootCmd.PersistentFlags().Lookup("log-file"))
 	viper.BindPFlag("LogStdout", RootCmd.PersistentFlags().Lookup("log-stdout"))
@@ -69,9 +75,17 @@ func init() {
 	viper.BindPFlag("DB.Password", RootCmd.PersistentFlags().Lookup("db-password"))
 	viper.BindPFlag("DB.Name", RootCmd.PersistentFlags().Lookup("db-name"))
 
+	serverCmd.PersistentFlags().StringP("interface", "i", "", "Interface on which the server should listen. Empty string is all interfaces")
+	serverCmd.PersistentFlags().StringP("port", "p", "8080", "Port on which the server should listen.")
+	serverCmd.PersistentFlags().StringSliceP("languages", "l", []string{}, "Comma separated list of language codes to load (ex: fr,de,es).")
+	viper.BindPFlag("Server.Interface", serverCmd.PersistentFlags().Lookup("interface"))
+	viper.BindPFlag("Server.Port", serverCmd.PersistentFlags().Lookup("port"))
+	viper.BindPFlag("Server.Languages", serverCmd.PersistentFlags().Lookup("languages"))
+
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(updateDBCmd)
 	RootCmd.AddCommand(serverCmd)
+	RootCmd.AddCommand(linkCmd)
 }
 
 // RootCmd is the base 'haxey' command of the commander
@@ -113,6 +127,49 @@ If projectDir is omitted, defaults to the current directory.`,
 	},
 }
 
+var symlinkDirs = []string{"static", "templates", "data", "resources", "i18n"}
+
+func cleanSymLinks() {
+	rootDir := viper.GetString("RootDir")
+	if rootDir == "" {
+		return
+	}
+	for _, dir := range symlinkDirs {
+		dirPath := filepath.Join(rootDir, "hexya", "server", dir)
+		os.RemoveAll(dirPath)
+		os.MkdirAll(dirPath, 0775)
+		// => ${ROOT}/hexya/server/{static,data,i18n,resources,templates}
+	}
+}
+
+func createSymLinks() {
+	rootDir := viper.GetString("RootDir")
+	if rootDir == "" {
+		return
+	}
+	for _, mod := range server.Modules {
+		for _, dir := range symlinkDirs {
+			srcPath := filepath.Join(mod.Dir, dir)
+			dstPath := filepath.Join(rootDir, "hexya", "server", dir, mod.Name)
+			if _, err := os.Stat(srcPath); err == nil {
+				//os.RemoveAll(dstPath)
+				fmt.Println("CreateSymLinks", srcPath, " <= ", dstPath)
+				os.Symlink(srcPath, dstPath)
+			}
+		}
+	}
+}
+
+var linkCmd = &cobra.Command{
+	Use:   "link",
+	Short: "Update symlinks to root-dir.",
+	Long:  `Update symlinks to root-dir.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cleanSymLinks()
+		createSymLinks()
+	},
+}
+
 func main() {
 
 	// Maximize goroutines
@@ -126,21 +183,23 @@ func main() {
 
 func initConfig() {
 	cfgFile := viper.GetString("ConfigFileName")
-	var defaultHexyaDir string
+
 	if runtime.GOOS != "windows" {
-		viper.AddConfigPath("/etc/hexya")
-		defaultHexyaDir = "/usr/share/hexya"
-	} else {
-		defaultHexyaDir = "./hexya"
+		viper.AddConfigPath("/etc/gut")
 	}
 
 	osUser, err := user.Current()
 	if err != nil {
-		log.Warn("Unable to retrieve current user", "error", err)
-	} else {
-		defaultHexyaDir = filepath.Join(osUser.HomeDir, ".hexya")
+		log.Panic("Unable to retrieve current user", "error", err)
 	}
+	defaultHexyaDir := filepath.Join(osUser.HomeDir, ".gut")
 	viper.SetDefault("DataDir", defaultHexyaDir)
+
+	rootDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err == nil {
+		viper.SetDefault("RootDir", rootDir)
+	}
+
 	viper.AddConfigPath(defaultHexyaDir)
 	viper.AddConfigPath(".")
 
@@ -150,8 +209,14 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	}
 
-	err = viper.ReadInConfig()
-	if err != nil {
-		log.Warn("Error while loading configuration file", "error", err)
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Println("Can't read config: ", err)
 	}
+	rootDir = viper.GetString("RootDir")
+	if _, err := os.Stat(rootDir); err != nil {
+		os.MkdirAll(rootDir, 0755)
+	}
+	// Comment out below line for orgin code
+	generate.HexyaDir = rootDir
+	log.Info(fmt.Sprintf("RootDir %s", generate.HexyaDir))
 }

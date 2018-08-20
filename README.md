@@ -2,12 +2,24 @@
 Stand-alone application for hexya - https://github.com/hexya-erp/hexya
 
 # Howto
-* Install hexya
+* Install origin hexya
 ```bash
-go get -u https://github.com/hexya-erp/hexya
+go get -u github.com/hexya-erp/hexya
 go get -u github.com/hexya-erp/hexya-base
-go get -u bitbucket.org/yourname/hexya-addons
+go get -u bitbucket.org/hexya-erp/hexya-addons
 ```
+* Or install custom hexya with some change:
+- support json data type
+- change PostgreSQL's integer data type to bigint
+
+```bash
+mkdir -p $GOPATH/src/github.com/hexya-erp
+cd $GOPATH/src/github.com/hexya-erp
+git clone https://github.com/halybang/hexya.git hexya
+go get -u github.com/hexya-erp/hexya-base
+go get -u bitbucket.org/hexya-erp/hexya-addons
+```
+
 * Clone haxey and edit config
 ```bash
 # git clone https://github.com/halybang/haxey.git $GOPATH/src/github.com/halybang/haxey

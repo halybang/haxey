@@ -32,7 +32,6 @@ import (
 	_ "github.com/halybang/haxey/config"
 )
 
-var log *logging.Logger
 
 func init() {
 	log = logging.GetLogger("init")
@@ -45,6 +44,7 @@ func init() {
 	RootCmd.PersistentFlags().String("log-file", "", "File to which the log will be written")
 	RootCmd.PersistentFlags().BoolP("log-stdout", "o", false, "Enable stdout logging. Use for development or debugging.")
 	RootCmd.PersistentFlags().Bool("debug", false, "Enable server debug mode for development")
+	RootCmd.PersistentFlags().Bool("demo", false, "Load demo data for evaluating or tests")
 
 	RootCmd.PersistentFlags().String("data-dir", "", "Path to the directory where Hexya should store its data")
 	RootCmd.PersistentFlags().String("root-dir", "", "Path to the directory where Hexya root dir")
@@ -55,7 +55,11 @@ func init() {
 	RootCmd.PersistentFlags().String("db-port", "5432", "Database port. Value is ignored if db-host is not set")
 	RootCmd.PersistentFlags().String("db-user", "", "Database user. Defaults to current user")
 	RootCmd.PersistentFlags().String("db-password", "", "Database password. Leave empty when connecting through socket")
-	RootCmd.PersistentFlags().String("db-name", "hexya", "Database name")
+	RootCmd.PersistentFlags().String("db-name", "haxey", "Database name")
+	RootCmd.PersistentFlags().String("db-ssl-mode", "require", "SSL mode to connect to the database. Must be one of 'disable', 'require' (default), 'verify-ca' and 'verify-full'")
+	RootCmd.PersistentFlags().String("db-ssl-cert", "", "Path to client certificate file")
+	RootCmd.PersistentFlags().String("db-ssl-key", "", "Path to client private key file")
+	RootCmd.PersistentFlags().String("db-ssl-ca", "", "Path to certificate authority certificate(s) file")
 
 	viper.BindPFlag("ConfigFileName", RootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("Modules", RootCmd.PersistentFlags().Lookup("modules"))
@@ -64,6 +68,7 @@ func init() {
 	viper.BindPFlag("LogFile", RootCmd.PersistentFlags().Lookup("log-file"))
 	viper.BindPFlag("LogStdout", RootCmd.PersistentFlags().Lookup("log-stdout"))
 	viper.BindPFlag("Debug", RootCmd.PersistentFlags().Lookup("debug"))
+	viper.BindPFlag("Demo", RootCmd.PersistentFlags().Lookup("demo"))
 
 	viper.BindPFlag("DataDir", RootCmd.PersistentFlags().Lookup("data-dir"))
 	viper.BindPFlag("RootDir", RootCmd.PersistentFlags().Lookup("root-dir"))
@@ -74,13 +79,24 @@ func init() {
 	viper.BindPFlag("DB.User", RootCmd.PersistentFlags().Lookup("db-user"))
 	viper.BindPFlag("DB.Password", RootCmd.PersistentFlags().Lookup("db-password"))
 	viper.BindPFlag("DB.Name", RootCmd.PersistentFlags().Lookup("db-name"))
+	viper.BindPFlag("DB.SSLMode", RootCmd.PersistentFlags().Lookup("db-ssl-mode"))
+	viper.BindPFlag("DB.SSLCert", RootCmd.PersistentFlags().Lookup("db-ssl-cert"))
+	viper.BindPFlag("DB.SSLKey", RootCmd.PersistentFlags().Lookup("db-ssl-key"))
+	viper.BindPFlag("DB.SSLCA", RootCmd.PersistentFlags().Lookup("db-ssl-ca"))
 
 	serverCmd.PersistentFlags().StringP("interface", "i", "", "Interface on which the server should listen. Empty string is all interfaces")
 	serverCmd.PersistentFlags().StringP("port", "p", "8080", "Port on which the server should listen.")
 	serverCmd.PersistentFlags().StringSliceP("languages", "l", []string{}, "Comma separated list of language codes to load (ex: fr,de,es).")
+	serverCmd.PersistentFlags().StringP("domain", "d", "", "Domain name of the server. When set, interface and port are set to 0.0.0.0:443 and it will automatically get an HTTPS certificate from Letsencrypt")
+	serverCmd.PersistentFlags().StringP("certificate", "C", "", "Certificate file for HTTPS. If neither certificate nor domain is set, the server will run on plain HTTP. When certificate is set, private-key must also be set.")
+	serverCmd.PersistentFlags().StringP("private-key", "K", "", "Private key file for HTTPS.")
+
 	viper.BindPFlag("Server.Interface", serverCmd.PersistentFlags().Lookup("interface"))
 	viper.BindPFlag("Server.Port", serverCmd.PersistentFlags().Lookup("port"))
 	viper.BindPFlag("Server.Languages", serverCmd.PersistentFlags().Lookup("languages"))
+	viper.BindPFlag("Server.Domain", serverCmd.PersistentFlags().Lookup("domain"))
+	viper.BindPFlag("Server.Certificate", serverCmd.PersistentFlags().Lookup("certificate"))
+	viper.BindPFlag("Server.PrivateKey", serverCmd.PersistentFlags().Lookup("private-key"))
 
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(updateDBCmd)
@@ -95,6 +111,7 @@ var RootCmd = &cobra.Command{
 	Long: `Haxey is an open source app wrapper for Hexya ERP written in Go.
 It is designed for high demand business data processing while being easily customizable`,
 	Run: func(cmd *cobra.Command, args []string) {
+		createSymLinks()
 		hexyacmd.StartServer(viper.AllSettings())
 	},
 }
@@ -104,7 +121,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version haxey",
 	Long:  `Print the version of the haxey application`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("haxey version 0.0.1")
+		fmt.Println("haxey version 0.1.0")
 	},
 }
 
@@ -127,7 +144,7 @@ If projectDir is omitted, defaults to the current directory.`,
 	},
 }
 
-var symlinkDirs = []string{"static", "templates", "data", "resources", "i18n"}
+var symlinkDirs = []string{"static", "templates", "data", "demo", "resources", "i18n"}
 
 func cleanSymLinks() {
 	rootDir := viper.GetString("RootDir")
@@ -170,10 +187,14 @@ var linkCmd = &cobra.Command{
 	},
 }
 
+var log logging.Logger
+
 func main() {
 
 	// Maximize goroutines
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	logging.Initialize()
+	log = logging.GetLogger("main")
 
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -185,14 +206,14 @@ func initConfig() {
 	cfgFile := viper.GetString("ConfigFileName")
 
 	if runtime.GOOS != "windows" {
-		viper.AddConfigPath("/etc/gut")
+		viper.AddConfigPath("/etc/haxey")
 	}
 
 	osUser, err := user.Current()
 	if err != nil {
 		log.Panic("Unable to retrieve current user", "error", err)
 	}
-	defaultHexyaDir := filepath.Join(osUser.HomeDir, ".gut")
+	defaultHexyaDir := filepath.Join(osUser.HomeDir, ".haxey")
 	viper.SetDefault("DataDir", defaultHexyaDir)
 
 	rootDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
@@ -218,5 +239,5 @@ func initConfig() {
 	}
 	// Comment out below line for orgin code
 	generate.HexyaDir = rootDir
-	log.Info(fmt.Sprintf("RootDir %s", generate.HexyaDir))
+	log.Info(fmt.Sprintf("Run with RootDir: %s", generate.HexyaDir))
 }

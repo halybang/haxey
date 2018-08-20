@@ -32,7 +32,6 @@ import (
 	_ "github.com/halybang/haxey/config"
 )
 
-
 func init() {
 	log = logging.GetLogger("init")
 	cobra.OnInitialize(initConfig)

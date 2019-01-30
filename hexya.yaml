@@ -2,14 +2,19 @@ Debug: true
 LogStdout: true
 LogLevel: debug
 LogFile: /tmp/hexya.log
-DataDir: /home/ha/haxey/hexya_data
-RootDir: /home/ha/haxey/hexya_root
+DataDir: "./data"
+ResourceDir: "./res"
 DB:
     host: 127.0.0.1
+    #host: "/var/run/postgresql"
     driver: postgres
     user: hexya
     password: hexya
     name: haxey
+    #port: "5432"
+    #sslca: ""
+    #sslcert: ""
+    #sslmode: "disable"
 Server:
     interface: "0.0.0.0"
     port:	8080
@@ -19,8 +24,22 @@ Server:
     languages:
       - vi
 Modules:
-#  - github.com/hexya-erp/hexya-base/base
-#  - github.com/hexya-erp/hexya-base/web
-#  - github.com/hexya-erp/hexya-base/webKanban
+  - github.com/hexya-addons/base
+  - github.com/hexya-addons/web
+  - github.com/hexya-addons/webKanban
+  - github.com/hexya-addons/account
+  - github.com/hexya-addons/sale
+  - github.com/hexya-addons/saleTeams
+  - github.com/hexya-addons/product
+  - github.com/hexya-addons/procurement
+  - github.com/hexya-addons/analytic
+
+## 
+#hexya project init github.com/halybang/haxey
+#cd <projectDir>
+#hexya generate .
+#go build .
+#./haxey updatedb -o
+#./haxey server -o
 
 #hexya i18n update -l vi

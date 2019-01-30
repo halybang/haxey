@@ -1,3 +1,20 @@
+# Deprecated
+Hexya already supported build stand-alone executable file.
+
+* Install
+```bash
+go get -u github.com/hexya-erp/hexya
+cd <projectDir>
+hexya project init github.com/halybang/haxey
+hexya generate .
+go build .
+./haxey updatedb -o
+./haxey server -o
+```
+* Tips 
+- Copy haxey.yaml to <projectDir> before run hexya generate.
+- Change go.mod to use custom/patched hexya.
+
 # haxey
 Stand-alone application for hexya - https://github.com/hexya-erp/hexya
 

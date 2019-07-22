@@ -5,11 +5,11 @@ LogFile: /tmp/hexya.log
 DataDir: "./data"
 ResourceDir: "./res"
 DB:
-    host: 127.0.0.1
+    host: localhost
     #host: "/var/run/postgresql"
     driver: postgres
-    user: hexya
-    password: hexya
+    user: haxey
+    password: haxeypassword
     name: haxey
     #port: "5432"
     #sslca: ""
@@ -27,12 +27,36 @@ Modules:
   - github.com/hexya-addons/base
   - github.com/hexya-addons/web
   - github.com/hexya-addons/webKanban
-  - github.com/hexya-addons/account
-  - github.com/hexya-addons/sale
-  - github.com/hexya-addons/saleTeams
-  - github.com/hexya-addons/product
-  - github.com/hexya-addons/procurement
-  - github.com/hexya-addons/analytic
+  #- github.com/hexya-addons/analytic
+  #- github.com/hexya-addons/decimalPrecision
+  #- github.com/hexya-addons/mail
+  #- github.com/hexya-addons/procurement
+  #- github.com/hexya-addons/product
+  #- github.com/hexya-addons/account
+  #- github.com/hexya-addons/accountAsset
+  #- github.com/hexya-addons/accountBudget
+  #- github.com/hexya-addons/accountTaxCashBasis
+  #- github.com/hexya-addons/accountCheckPrinting
+  #- github.com/hexya-addons/accountVoucher
+  #- github.com/hexya-addons/mrp
+  #- github.com/hexya-addons/mrpByProduct
+  #- github.com/hexya-addons/project
+  #- github.com/hexya-addons/projectIssue
+  #- github.com/hexya-addons/purchase
+  #- github.com/hexya-addons/purchaseRequisition
+  #- github.com/hexya-addons/stock
+  #- github.com/hexya-addons/stockAccount
+  #- github.com/hexya-addons/stockLandedCost
+  #- github.com/hexya-addons/sale
+  #- github.com/hexya-addons/saleTeams
+  #- github.com/hexya-addons/saleStock
+  #- github.com/hexya-addons/saleOrderDates
+  #- github.com/hexya-addons/saleMRP
+  #- github.com/hexya-addons/saleMargin
+
+  - github.com/halybang/hexya-addons/websocket
+  #- bitbucket.org/halybang/topdoo/hexya-addons/iot
+  #- bitbucket.org/halybang/topdoo/hexya-addons/dlt
 
 ## 
 #hexya project init github.com/halybang/haxey
